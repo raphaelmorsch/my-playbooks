@@ -2,6 +2,7 @@
 
 - name: Install and configure Apache HTTP Server with Basic authentication
   hosts: webserver
+  become: true
   vars:
     firewall_pkg: firewalld
     firewall_svc: firewalld
@@ -15,6 +16,7 @@
     secrets_src: files/htpasswd
     secrets_dest: "{{ secrets_dir }}/htpasswd"
     web_root: /var/www/html
+
   tasks:
     - name: Ensure latest version of necessary packages are installed
       ansible.builtin.dnf:
@@ -80,3 +82,23 @@
         name: "{{ web_svc }}"
         state: started
         enabled: true
+
+- name: Ensure authentication to web server is working
+  hosts: workstation
+  become: false
+  vars:
+    - web_user: guest
+  vars_files:
+    - vars/secret.yml
+
+  tasks:
+    - name: Ensure basic auth is working
+      ansible.builtin.uri:
+        url: https://serverb.lab.example.com
+        user: "{{ web_user }}"
+        password: "{{ web_pass }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code:
+          - 200
+      register: auth_test
