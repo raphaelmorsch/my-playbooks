@@ -1,0 +1,82 @@
+---
+
+- name: Install and configure Apache HTTP Server with Basic authentication
+  hosts: webserver
+  vars:
+    firewall_pkg: firewalld
+    firewall_svc: firewalld
+    web_pkg: httpd
+    web_svc: httpd
+    ssl_pkg: mod_ssl
+    httpdconf_src: files/httpd.conf
+    httpdconf_dest: /etc/httpd/conf/httpd.conf
+    htaccess_src: files/.htaccess
+    secrets_dir: /etc/httpd/secrets
+    secrets_src: files/htpasswd
+    secrets_dest: "{{ secrets_dir }}/htpasswd"
+    web_root: /var/www/html
+  tasks:
+    - name: Ensure latest version of necessary packages are installed
+      ansible.builtin.dnf:
+        name:
+          - "{{ firewall_pkg }}"
+          - "{{ web_pkg }}"
+          - "{{ ssl_pkg }}"
+        state: latest
+
+    - name: Ensure specified file in httpdconf_src variable has been copied
+      ansible.builtin.copy:
+        src: "{{ httpdconf_src }}"
+        dest: "{{ httpdconf_dest }}"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Ensure secrets_dir directory is created
+      ansible.builtin.file:
+        path: "{{ secrets_dir }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+
+    - name: Ensure htpasswd file is added
+      ansible.builtin.copy:
+        src: "{{ secrets_src }}"
+        dest: "{{ secrets_dest }}"
+        owner: apache
+        group: apache
+        mode: '0400'
+
+    - name: Ensure .htaccess file is created on the webserver
+      ansible.builtin.copy:
+        src: "{{ htaccess_src }}"
+        dest: "{{ web_root }}/.htaccess"
+        owner: apache
+        group: apache
+        mode: '0400'
+
+    - name: Ensure content file is created on web root directory
+      ansible.builtin.copy:
+        mode: '0644'
+        dest: "{{ web_root }}/index.html"
+        content: "{{ ansible_facts['fqdn'] }} {{ ansible_facts['default_ipv4']['address'] }} has been customized by Ansible"
+
+    - name: Ensure firewall service is enabled and started
+      ansible.builtin.service:
+        name: "{{ firewall_svc }}"
+        state: started
+        enabled: true
+
+    - name: Ensure access to https service is enabled
+      ansible.posix.firewalld:
+        service: https
+        state: enabled
+        permanent: true
+        immediate: true
+
+    - name: Ensure web service is enabled and started
+      ansible.builtin.service:
+        name: "{{ web_svc }}"
+        state: started
+        enabled: true

@@ -1,0 +1,7 @@
+# Logs and config files #
+######################
+*.log
+*.json
+
+# Ignore VsCode configurations
+/.vscode
