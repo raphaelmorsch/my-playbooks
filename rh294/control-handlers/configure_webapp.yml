@@ -1,0 +1,60 @@
+---
+- name: Web application server is deployed
+  hosts: webapp
+  vars:
+    packages:
+      - nginx
+      - php-fpm
+    web_service: nginx
+    app_service: php-fpm
+    resources_dir: /home/student/control-handlers/files
+    web_config_src: "{{ resources_dir }}/nginx.conf.standard"
+    web_config_dst: /etc/nginx/nginx.conf
+    app_config_src: "{{ resources_dir }}/php-fpm.conf.standard"
+    app_config_dst: /etc/php-fpm.conf
+
+  tasks:
+
+    - name: The {{ packages }} packages are installed 
+      ansible.builtin.dnf:
+        name: "{{ packages }}"
+        state: present
+
+    - name: Make sure the web service is running
+      ansible.builtin.service:
+        name: "{{ web_service }}"
+        state: started
+        enabled: true
+
+    - name: Make sure the application service is running
+      ansible.builtin.service:
+        name: "{{ app_service }}"
+        state: started
+        enabled: true
+
+    - name: The {{ web_config_dst }} file has been deployed
+      ansible.builtin.copy:
+        src: "{{ web_config_src }}"
+        dest: "{{ web_config_dst }}"
+        force: true
+      notify:
+        - Restart web service
+
+    - name: The {{ web_config_dst }} file has been deployed
+      ansible.builtin.copy:
+        src: "{{ app_config_src }}"
+        dest: "{{ app_config_dst }}"
+        force: true
+      notify:
+        - Restart app service
+
+  handlers:
+    - name: Restart web service
+      ansible.builtin.service:
+        name: "{{ web_service }}"
+        state: restarted
+
+    - name: Restart app service
+      ansible.builtin.service:
+        name: "{{ app_service }}"
+        state: restarted

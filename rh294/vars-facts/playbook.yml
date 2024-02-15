@@ -93,6 +93,7 @@
 
   tasks:
     - name: Ensure basic auth is working
+      register: auth_test
       ansible.builtin.uri:
         url: https://serverb.lab.example.com
         user: "{{ web_user }}"
@@ -101,4 +102,3 @@
         validate_certs: false
         status_code:
           - 200
-      register: auth_test
